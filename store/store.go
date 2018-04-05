@@ -13,18 +13,28 @@ type Store interface {
 	Create() error
 	WriteAt(b []byte, off int) (int, error)
 	ReadAt(b []byte, off int) (int, error)
-	Sync(off int, n int)
+	Sync(off int, n int) error
 	Close() error
 }
 
-//FileSize is the default size for each db file ~68Gb
-const FileSize = 4096 * 4096 * 4096
+//FileSizeDb is the default size for each db file ~68Gb
+const FileSizeDb = 4096 * 4096 * 4096
+
+//FileSizeIdx is the default size for each db file 4096 bytes
+const FileSizeIdx = 4096
 
 // Store errors types
 var (
 	ErrZeroSlice = fmt.Errorf("Byte slice size must be more than 0")
 	ErrNoData    = fmt.Errorf("Offset must be within valid data region")
 	ErrSizeLimit = fmt.Errorf("Store max size limit of 1 tera reached")
+)
+
+const (
+	// MAPPED backend
+	MAPPED = iota
+	// NORMAL file backed
+	NORMAL
 )
 
 // FileStore is the dt responsible for backing the skiplist on disk
@@ -36,11 +46,36 @@ type FileStore struct {
 	fileStoreMaxsize int
 }
 
-func newFileStore() *FileStore {
-	return &FileStore{
-		fname:            "index.",
-		fileStoreMaxsize: FileSize * 15,
+// New instanciate a new store based on name size and flags and returns
+// the Store interface
+func New(name string, size int, flag int) Store {
+	var (
+		fstore *FileStore
+		mstore *MappedStore
+	)
+
+	if size == 0 {
+		size = FileSizeIdx
 	}
+
+	if name == "" {
+		name = "index."
+	}
+
+	if flag != MAPPED {
+		fstore = &FileStore{
+			fname:            name,
+			fileStoreMaxsize: size * 16,
+		}
+		return fstore
+	}
+
+	mstore = &MappedStore{
+		fstore: fstore,
+		mstore: make([][]byte, 0),
+	}
+
+	return mstore
 }
 
 //Create new FileStore backing
@@ -75,14 +110,14 @@ func (s *FileStore) ReadAt(b []byte, off int) (int, error) {
 }
 
 func (s *FileStore) resize(size int) error {
-	if size+s.current > FileSize || size == 0 {
+	if size+s.current > FileSizeDb || size == 0 {
 		fname := fmt.Sprintf("%v%v", s.fname, len(s.files))
 		file, err := os.Create(fname)
 		if err != nil {
 			return err
 		}
 
-		if err := file.Truncate(FileSize); err != nil {
+		if err := file.Truncate(FileSizeDb); err != nil {
 			return err
 		}
 
@@ -95,17 +130,20 @@ func (s *FileStore) resize(size int) error {
 // Sync either sync the everything of calls sync file range with the
 // specified off and n number of bytes ( sync only the pages the need
 // to be synched
-func (s *FileStore) Sync(off int, n int) {
+func (s *FileStore) Sync(off int, n int) error {
 	if off == 0 && n == 0 {
 		syscall.Sync()
-		return
+		return nil
 	}
-	syscall.SyncFileRange(
+
+	err := syscall.SyncFileRange(
 		int(s.files[len(s.files)-1].Fd()),
 		int64(off),
 		int64(n),
 		0,
 	)
+
+	return err
 }
 
 // Close the FileStore and syncs
@@ -127,10 +165,6 @@ type MappedStore struct {
 	mstore [][]byte
 }
 
-func newMappedStore() *MappedStore {
-	return &MappedStore{newFileStore(), nil}
-}
-
 //Create a new mapped store
 func (m *MappedStore) Create() error {
 	if err := m.fstore.Create(); err != nil {
@@ -140,7 +174,7 @@ func (m *MappedStore) Create() error {
 	prot := syscall.PROT_WRITE | syscall.PROT_READ
 	flag := syscall.MAP_SHARED
 	fd := m.fstore.files[len(m.fstore.files)-1].Fd()
-	buf, err := syscall.Mmap(int(fd), 0, int(FileSize), prot, flag)
+	buf, err := syscall.Mmap(int(fd), 0, int(FileSizeDb), prot, flag)
 	if err != nil {
 		return err
 	}

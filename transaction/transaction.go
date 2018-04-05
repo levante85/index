@@ -4,13 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"time"
+
+	"github.com/levante85/index/store"
 )
 
 // Tx is the transaction structure
 type Tx struct {
 	fname    string
 	buffer   *bytes.Buffer
-	fstore   *store.FStore
+	fstore   *store.FileStore
 	statusOk bool
 }
 
@@ -19,6 +21,7 @@ func New() *Tx {
 	return &Tx{
 		fmt.Sprintf("%v", time.Now().Unix()),
 		&bytes.Buffer{},
+		nil,
 		true,
 	}
 }

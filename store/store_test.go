@@ -8,7 +8,7 @@ import (
 )
 
 func TestFStoreOpenClose(t *testing.T) {
-	fstore := newFileStore()
+	fstore := &FileStore{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
 	if err := fstore.Create(); err != nil {
 		t.Fatal(err)
 	}
@@ -18,8 +18,8 @@ func TestFStoreOpenClose(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if size := stat.Size(); size != FileSize {
-		t.Fatalf("Size shuold be %v and instead is %v\n", FileSize, size)
+	if size := stat.Size(); size != FileSizeDb {
+		t.Fatalf("Size shuold be %v and instead is %v\n", FileSizeDb, size)
 	}
 
 	name := fmt.Sprintf("%v0", fstore.fname)
@@ -37,7 +37,7 @@ func TestFStoreOpenClose(t *testing.T) {
 }
 
 func TestFStoreWrite(t *testing.T) {
-	fstore := newFileStore()
+	fstore := &FileStore{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
 	if err := fstore.Create(); err != nil {
 		t.Fatal(err)
 	}
@@ -47,8 +47,8 @@ func TestFStoreWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if size := stat.Size(); size != FileSize {
-		t.Fatalf("Size shuold be %v and instead is %v\n", FileSize, size)
+	if size := stat.Size(); size != FileSizeDb {
+		t.Fatalf("Size shuold be %v and instead is %v\n", FileSizeDb, size)
 	}
 
 	name := fmt.Sprintf("%v0", fstore.fname)
@@ -89,7 +89,8 @@ func TestFStoreWrite(t *testing.T) {
 }
 
 func TestFStoreWriteMany(t *testing.T) {
-	fstore := newFileStore()
+	fstore := &FileStore{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
+	fstore := New("", 0, NORMAL)
 	if err := fstore.Create(); err != nil {
 		t.Fatal(err)
 	}
@@ -99,8 +100,8 @@ func TestFStoreWriteMany(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if size := stat.Size(); size != FileSize {
-		t.Fatalf("Size shuold be %v and instead is %v\n", FileSize, size)
+	if size := stat.Size(); size != FileSizeDb {
+		t.Fatalf("Size shuold be %v and instead is %v\n", FileSizeDb, size)
 	}
 
 	name := fmt.Sprintf("%v0", fstore.fname)
@@ -152,7 +153,7 @@ func TestFStoreWriteMany(t *testing.T) {
 }
 
 func BenchmarkRead(b *testing.B) {
-	fstore := newFileStore()
+	fstore := &FileStore{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
 	if err := fstore.Create(); err != nil {
 		b.Fatal(err)
 	}
@@ -200,7 +201,7 @@ func BenchmarkRead(b *testing.B) {
 }
 
 func BenchmarkWrite(b *testing.B) {
-	fstore := newFileStore()
+	fstore := &FileStore{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
 	if err := fstore.Create(); err != nil {
 		b.Fatal(err)
 	}
@@ -232,7 +233,7 @@ func BenchmarkWrite(b *testing.B) {
 }
 
 func BenchmarkReadLarge(b *testing.B) {
-	fstore := newFileStore()
+	fstore := &FileStore{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
 	if err := fstore.Create(); err != nil {
 		b.Fatal(err)
 	}
@@ -280,7 +281,7 @@ func BenchmarkReadLarge(b *testing.B) {
 }
 
 func BenchmarkWriteLarge(b *testing.B) {
-	fstore := newFileStore()
+	fstore := &FileStore{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
 	if err := fstore.Create(); err != nil {
 		b.Fatal(err)
 	}
@@ -312,7 +313,16 @@ func BenchmarkWriteLarge(b *testing.B) {
 }
 
 func TestMStoreOpenClose(t *testing.T) {
-	fstore := newMappedStore()
+	store := &FileStore{
+		fname:            "index.",
+		fileStoreMaxsize: FileSizeDb * 16,
+	}
+
+	fstore := &MappedStore{
+		fstore: store,
+		mstore: make([][]byte, 0),
+	}
+
 	if err := fstore.Create(); err != nil {
 		t.Fatal(err)
 	}
@@ -322,8 +332,8 @@ func TestMStoreOpenClose(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if size := stat.Size(); size != FileSize {
-		t.Fatalf("Size shuold be %v and instead is %v\n", FileSize, size)
+	if size := stat.Size(); size != FileSizeDb {
+		t.Fatalf("Size shuold be %v and instead is %v\n", FileSizeDb, size)
 	}
 
 	name := fmt.Sprintf("%v0", fstore.fstore.fname)
@@ -341,7 +351,16 @@ func TestMStoreOpenClose(t *testing.T) {
 }
 
 func TestMStoreWrite(t *testing.T) {
-	fstore := newMappedStore()
+	store := &FileStore{
+		fname:            "index.",
+		fileStoreMaxsize: FileSizeDb * 16,
+	}
+
+	fstore := &MappedStore{
+		fstore: store,
+		mstore: make([][]byte, 0),
+	}
+
 	if err := fstore.Create(); err != nil {
 		t.Fatal(err)
 	}
@@ -380,7 +399,16 @@ func TestMStoreWrite(t *testing.T) {
 }
 
 func TestMStoreWriteMany(t *testing.T) {
-	fstore := newMappedStore()
+	store := &FileStore{
+		fname:            "index.",
+		fileStoreMaxsize: FileSizeDb * 16,
+	}
+
+	fstore := &MappedStore{
+		fstore: store,
+		mstore: make([][]byte, 0),
+	}
+
 	if err := fstore.Create(); err != nil {
 		t.Fatal(err)
 	}
@@ -435,7 +463,15 @@ func TestMStoreWriteMany(t *testing.T) {
 }
 
 func BenchmarkMStoreRead(b *testing.B) {
-	fstore := newMappedStore()
+	store := &FileStore{
+		fname:            "index.",
+		fileStoreMaxsize: FileSizeDb * 16,
+	}
+
+	fstore := &MappedStore{
+		fstore: store,
+		mstore: make([][]byte, 0),
+	}
 	if err := fstore.Create(); err != nil {
 		b.Fatal(err)
 	}
@@ -483,7 +519,15 @@ func BenchmarkMStoreRead(b *testing.B) {
 }
 
 func BenchmarkMStoreWrite(b *testing.B) {
-	fstore := newMappedStore()
+	store := &FileStore{
+		fname:            "index.",
+		fileStoreMaxsize: FileSizeDb * 16,
+	}
+
+	fstore := &MappedStore{
+		fstore: store,
+		mstore: make([][]byte, 0),
+	}
 	if err := fstore.Create(); err != nil {
 		b.Fatal(err)
 	}
@@ -515,7 +559,16 @@ func BenchmarkMStoreWrite(b *testing.B) {
 }
 
 func BenchmarkMStoreReadLarge(b *testing.B) {
-	fstore := newMappedStore()
+	store := &FileStore{
+		fname:            "index.",
+		fileStoreMaxsize: FileSizeDb * 16,
+	}
+
+	fstore := &MappedStore{
+		fstore: store,
+		mstore: make([][]byte, 0),
+	}
+
 	if err := fstore.Create(); err != nil {
 		b.Fatal(err)
 	}
@@ -563,7 +616,15 @@ func BenchmarkMStoreReadLarge(b *testing.B) {
 }
 
 func BenchmarkMStoreWriteLarge(b *testing.B) {
-	fstore := newMappedStore()
+	store := &FileStore{
+		fname:            "index.",
+		fileStoreMaxsize: FileSizeDb * 16,
+	}
+
+	fstore := &MappedStore{
+		fstore: store,
+		mstore: make([][]byte, 0),
+	}
 	if err := fstore.Create(); err != nil {
 		b.Fatal(err)
 	}
