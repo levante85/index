@@ -1,0 +1,24 @@
+package main
+
+import (
+	"bytes"
+	"compress/gzip"
+	"encoding/binary"
+	"fmt"
+)
+
+func main() {
+	for j := 0; j < 1000; j++ {
+		var buf bytes.Buffer
+		gz := gzip.NewWriter(&buf)
+		for curr, i := 0, 0; i < 32; i, curr = i+1, curr+8 {
+			b := make([]byte, 8)
+			var num uint64
+			binary.LittleEndian.PutUint64(b, num)
+			gz.Write(b)
+		}
+
+		fmt.Println("Compressed size: ", buf.Len())
+	}
+
+}
