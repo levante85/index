@@ -12,7 +12,7 @@ import (
 type Tx struct {
 	fname    string
 	buffer   *bytes.Buffer
-	fstore   *store.FileStore
+	fstore   *store.FileBackend
 	statusOk bool
 }
 

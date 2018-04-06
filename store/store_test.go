@@ -8,7 +8,7 @@ import (
 )
 
 func TestFStoreOpenClose(t *testing.T) {
-	fstore := &FileStore{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
+	fstore := &FileBackend{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
 	if err := fstore.Create(); err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestFStoreOpenClose(t *testing.T) {
 }
 
 func TestFStoreWrite(t *testing.T) {
-	fstore := &FileStore{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
+	fstore := &FileBackend{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
 	if err := fstore.Create(); err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestFStoreWrite(t *testing.T) {
 		t.Fatal("n and len(data) should be equal")
 	}
 
-	if bytes.Equal(data, out) != true {
+	if bytes.Equal(data, out) {
 		t.Fatal("data should be equal")
 	}
 
@@ -89,7 +89,7 @@ func TestFStoreWrite(t *testing.T) {
 }
 
 func TestFStoreWriteMany(t *testing.T) {
-	fstore := &FileStore{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
+	fstore := &FileBackend{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
 	if err := fstore.Create(); err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestFStoreWriteMany(t *testing.T) {
 			t.Fatal("n and len(data) should be equal")
 		}
 
-		if bytes.Equal(data, out) != true {
+		if !bytes.Equal(data, out) {
 			t.Fatal("data should be equal")
 		}
 		off += len(data)
@@ -152,7 +152,7 @@ func TestFStoreWriteMany(t *testing.T) {
 }
 
 func BenchmarkRead(b *testing.B) {
-	fstore := &FileStore{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
+	fstore := &FileBackend{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
 	if err := fstore.Create(); err != nil {
 		b.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func BenchmarkRead(b *testing.B) {
 				b.Fatal("n and len(data) should be equal")
 			}
 
-			if bytes.Equal(data, out) != true {
+			if !bytes.Equal(data, out) {
 				b.Fatal("data should be equal")
 			}
 			off += len(data)
@@ -200,7 +200,7 @@ func BenchmarkRead(b *testing.B) {
 }
 
 func BenchmarkWrite(b *testing.B) {
-	fstore := &FileStore{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
+	fstore := &FileBackend{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
 	if err := fstore.Create(); err != nil {
 		b.Fatal(err)
 	}
@@ -232,7 +232,7 @@ func BenchmarkWrite(b *testing.B) {
 }
 
 func BenchmarkReadLarge(b *testing.B) {
-	fstore := &FileStore{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
+	fstore := &FileBackend{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
 	if err := fstore.Create(); err != nil {
 		b.Fatal(err)
 	}
@@ -262,7 +262,7 @@ func BenchmarkReadLarge(b *testing.B) {
 				b.Fatal("n and len(data) should be equal")
 			}
 
-			if bytes.Equal(data, out) != true {
+			if !bytes.Equal(data, out) {
 				b.Fatal("data should be equal")
 			}
 			off += len(data)
@@ -280,7 +280,7 @@ func BenchmarkReadLarge(b *testing.B) {
 }
 
 func BenchmarkWriteLarge(b *testing.B) {
-	fstore := &FileStore{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
+	fstore := &FileBackend{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
 	if err := fstore.Create(); err != nil {
 		b.Fatal(err)
 	}
@@ -312,12 +312,12 @@ func BenchmarkWriteLarge(b *testing.B) {
 }
 
 func TestMStoreOpenClose(t *testing.T) {
-	store := &FileStore{
+	store := &FileBackend{
 		fname:            "index.",
 		fileStoreMaxsize: FileSizeDb * 16,
 	}
 
-	fstore := &MappedStore{
+	fstore := &MappedBackend{
 		fstore: store,
 		mstore: make([][]byte, 0),
 	}
@@ -350,12 +350,12 @@ func TestMStoreOpenClose(t *testing.T) {
 }
 
 func TestMStoreWrite(t *testing.T) {
-	store := &FileStore{
+	store := &FileBackend{
 		fname:            "index.",
 		fileStoreMaxsize: FileSizeDb * 16,
 	}
 
-	fstore := &MappedStore{
+	fstore := &MappedBackend{
 		fstore: store,
 		mstore: make([][]byte, 0),
 	}
@@ -384,7 +384,7 @@ func TestMStoreWrite(t *testing.T) {
 		t.Fatal("n and len(data) should be equal")
 	}
 
-	if bytes.Equal(data, out) != true {
+	if !bytes.Equal(data, out) {
 		t.Fatal("data should be equal: ", string(data), string(out))
 	}
 
@@ -398,12 +398,12 @@ func TestMStoreWrite(t *testing.T) {
 }
 
 func TestMStoreWriteMany(t *testing.T) {
-	store := &FileStore{
+	store := &FileBackend{
 		fname:            "index.",
 		fileStoreMaxsize: FileSizeDb * 16,
 	}
 
-	fstore := &MappedStore{
+	fstore := &MappedBackend{
 		fstore: store,
 		mstore: make([][]byte, 0),
 	}
@@ -441,7 +441,7 @@ func TestMStoreWriteMany(t *testing.T) {
 			t.Fatal("n and len(data) should be equal")
 		}
 
-		if bytes.Equal(data, out) != true {
+		if !bytes.Equal(data, out) {
 			t.Fatal("data should be equal at inter: ", i, string(data), string(out))
 		}
 
@@ -462,12 +462,12 @@ func TestMStoreWriteMany(t *testing.T) {
 }
 
 func BenchmarkMStoreRead(b *testing.B) {
-	store := &FileStore{
+	store := &FileBackend{
 		fname:            "index.",
 		fileStoreMaxsize: FileSizeDb * 16,
 	}
 
-	fstore := &MappedStore{
+	fstore := &MappedBackend{
 		fstore: store,
 		mstore: make([][]byte, 0),
 	}
@@ -500,7 +500,7 @@ func BenchmarkMStoreRead(b *testing.B) {
 				b.Fatal("n and len(data) should be equal")
 			}
 
-			if bytes.Equal(data, out) != true {
+			if !bytes.Equal(data, out) {
 				b.Fatal("data should be equal")
 			}
 			off += len(data)
@@ -518,12 +518,12 @@ func BenchmarkMStoreRead(b *testing.B) {
 }
 
 func BenchmarkMStoreWrite(b *testing.B) {
-	store := &FileStore{
+	store := &FileBackend{
 		fname:            "index.",
 		fileStoreMaxsize: FileSizeDb * 16,
 	}
 
-	fstore := &MappedStore{
+	fstore := &MappedBackend{
 		fstore: store,
 		mstore: make([][]byte, 0),
 	}
@@ -558,12 +558,12 @@ func BenchmarkMStoreWrite(b *testing.B) {
 }
 
 func BenchmarkMStoreReadLarge(b *testing.B) {
-	store := &FileStore{
+	store := &FileBackend{
 		fname:            "index.",
 		fileStoreMaxsize: FileSizeDb * 16,
 	}
 
-	fstore := &MappedStore{
+	fstore := &MappedBackend{
 		fstore: store,
 		mstore: make([][]byte, 0),
 	}
@@ -597,7 +597,7 @@ func BenchmarkMStoreReadLarge(b *testing.B) {
 				b.Fatal("n and len(data) should be equal")
 			}
 
-			if bytes.Equal(data, out) != true {
+			if !bytes.Equal(data, out) {
 				b.Fatal("data should be equal")
 			}
 			off += len(data)
@@ -615,12 +615,12 @@ func BenchmarkMStoreReadLarge(b *testing.B) {
 }
 
 func BenchmarkMStoreWriteLarge(b *testing.B) {
-	store := &FileStore{
+	store := &FileBackend{
 		fname:            "index.",
 		fileStoreMaxsize: FileSizeDb * 16,
 	}
 
-	fstore := &MappedStore{
+	fstore := &MappedBackend{
 		fstore: store,
 		mstore: make([][]byte, 0),
 	}

@@ -39,10 +39,9 @@ var (
 	ErrSizeLimit = fmt.Errorf("Store max size limit of 1 tera reached")
 )
 
-// FileStore is the dt responsible for backing the skiplist on disk
-type FileStore struct {
+// FileBackend is the dt responsible for backing the skiplist on disk
+type FileBackend struct {
 	files            []*os.File
-	data             [][]byte
 	fname            string
 	current          int
 	fileStoreMaxsize int
@@ -52,8 +51,8 @@ type FileStore struct {
 // the Store interface
 func New(name string, size uint, flag int) Store {
 	var (
-		fstore *FileStore
-		mstore *MappedStore
+		fstore *FileBackend
+		mstore *MappedBackend
 	)
 
 	if size == 0 {
@@ -65,14 +64,14 @@ func New(name string, size uint, flag int) Store {
 	}
 
 	if flag != MAPPED {
-		fstore = &FileStore{
+		fstore = &FileBackend{
 			fname:            name,
 			fileStoreMaxsize: int(size * 16),
 		}
 		return fstore
 	}
 
-	mstore = &MappedStore{
+	mstore = &MappedBackend{
 		fstore: fstore,
 		mstore: make([][]byte, 0),
 	}
@@ -81,16 +80,12 @@ func New(name string, size uint, flag int) Store {
 }
 
 //Create new FileStore backing
-func (s *FileStore) Create() error {
-	if err := s.resize(0); err != nil {
-		return err
-	}
-
-	return nil
+func (s *FileBackend) Create() error {
+	return s.resize(0)
 }
 
 //WriteAt write at said location
-func (s *FileStore) WriteAt(b []byte, off int) (int, error) {
+func (s *FileBackend) WriteAt(b []byte, off int) (int, error) {
 	if err := s.resize(len(b)); err != nil {
 		return -1, err
 	}
@@ -107,11 +102,11 @@ func (s *FileStore) WriteAt(b []byte, off int) (int, error) {
 }
 
 //ReadAt write at said location
-func (s *FileStore) ReadAt(b []byte, off int) (int, error) {
+func (s *FileBackend) ReadAt(b []byte, off int) (int, error) {
 	return s.files[len(s.files)-1].ReadAt(b, int64(off))
 }
 
-func (s *FileStore) resize(size int) error {
+func (s *FileBackend) resize(size int) error {
 	if size+s.current > FileSizeDb || size == 0 {
 		fname := fmt.Sprintf("%v%v", s.fname, len(s.files))
 		file, err := os.Create(fname)
@@ -132,7 +127,7 @@ func (s *FileStore) resize(size int) error {
 // Sync either sync the everything of calls sync file range with the
 // specified off and n number of bytes ( sync only the pages the need
 // to be synched
-func (s *FileStore) Sync(off int, n int) error {
+func (s *FileBackend) Sync(off int, n int) error {
 	if off == 0 && n == 0 {
 		syscall.Sync()
 		return nil
@@ -149,26 +144,24 @@ func (s *FileStore) Sync(off int, n int) error {
 }
 
 // Close the FileStore and syncs
-func (s *FileStore) Close() error {
+func (s *FileBackend) Close() error {
 	for i := range s.files {
 		if err := s.files[i].Close(); err != nil {
 			return err
 		}
 	}
 
-	s.Sync(0, 0)
-
-	return nil
+	return s.Sync(0, 0)
 }
 
-// MappedStore is a memory mapped store that only maps for writes
-type MappedStore struct {
-	fstore *FileStore
+// MappedBackend is a memory mapped store that only maps for writes
+type MappedBackend struct {
+	fstore *FileBackend
 	mstore [][]byte
 }
 
 //Create a new mapped store
-func (m *MappedStore) Create() error {
+func (m *MappedBackend) Create() error {
 	if err := m.fstore.Create(); err != nil {
 		return err
 	}
@@ -186,7 +179,7 @@ func (m *MappedStore) Create() error {
 }
 
 //WriteAt write at said location
-func (m *MappedStore) WriteAt(b []byte, off int) (int, error) {
+func (m *MappedBackend) WriteAt(b []byte, off int) (int, error) {
 	if err := m.fstore.resize(len(b)); err != nil {
 		return -1, err
 	}
@@ -212,13 +205,13 @@ func (m *MappedStore) WriteAt(b []byte, off int) (int, error) {
 }
 
 //ReadAt write at said location
-func (m *MappedStore) ReadAt(b []byte, off int) (int, error) {
+func (m *MappedBackend) ReadAt(b []byte, off int) (int, error) {
 	if len(b) == 0 {
 		return -1, ErrZeroSlice
 
 	}
 
-	if int(off)+len(b)-1 > m.fstore.current {
+	if off+len(b)-1 > m.fstore.current {
 		return -1, ErrNoData
 	}
 
@@ -232,7 +225,7 @@ func (m *MappedStore) ReadAt(b []byte, off int) (int, error) {
 
 // Sync syncs the underline mapped storage or a region of it if anything
 // other than zero is specified to it
-func (m *MappedStore) Sync(off int, n int) error {
+func (m *MappedBackend) Sync(off int, n int) error {
 	var (
 		_p    unsafe.Pointer
 		_zero uintptr
@@ -268,7 +261,7 @@ func (m *MappedStore) Sync(off int, n int) error {
 }
 
 // Close the FileStore call to Munmap should also take care of syncying to disk
-func (m *MappedStore) Close() error {
+func (m *MappedBackend) Close() error {
 	for i := range m.fstore.files {
 		if err := syscall.Munmap(m.mstore[i]); err != nil {
 			return err
