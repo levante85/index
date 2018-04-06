@@ -90,7 +90,6 @@ func TestFStoreWrite(t *testing.T) {
 
 func TestFStoreWriteMany(t *testing.T) {
 	fstore := &FileStore{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
-	fstore := New("", 0, NORMAL)
 	if err := fstore.Create(); err != nil {
 		t.Fatal(err)
 	}

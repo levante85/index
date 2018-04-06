@@ -17,17 +17,12 @@ type Store interface {
 	Close() error
 }
 
-//FileSizeDb is the default size for each db file ~68Gb
-const FileSizeDb = 4096 * 4096 * 4096
+const (
+	//FileSizeDb is the default size for each db file ~68Gb
+	FileSizeDb = 4096 * 4096 * 4096
 
-//FileSizeIdx is the default size for each db file 4096 bytes
-const FileSizeIdx = 4096
-
-// Store errors types
-var (
-	ErrZeroSlice = fmt.Errorf("Byte slice size must be more than 0")
-	ErrNoData    = fmt.Errorf("Offset must be within valid data region")
-	ErrSizeLimit = fmt.Errorf("Store max size limit of 1 tera reached")
+	//FileSizeIdx is the default size for each db file 4096 bytes
+	FileSizeIdx = 4096
 )
 
 const (
@@ -35,6 +30,13 @@ const (
 	MAPPED = iota
 	// NORMAL file backed
 	NORMAL
+)
+
+// Store errors types
+var (
+	ErrZeroSlice = fmt.Errorf("Byte slice size must be more than 0")
+	ErrNoData    = fmt.Errorf("Offset must be within valid data region")
+	ErrSizeLimit = fmt.Errorf("Store max size limit of 1 tera reached")
 )
 
 // FileStore is the dt responsible for backing the skiplist on disk
@@ -48,7 +50,7 @@ type FileStore struct {
 
 // New instanciate a new store based on name size and flags and returns
 // the Store interface
-func New(name string, size int, flag int) Store {
+func New(name string, size uint, flag int) Store {
 	var (
 		fstore *FileStore
 		mstore *MappedStore
@@ -65,7 +67,7 @@ func New(name string, size int, flag int) Store {
 	if flag != MAPPED {
 		fstore = &FileStore{
 			fname:            name,
-			fileStoreMaxsize: size * 16,
+			fileStoreMaxsize: int(size * 16),
 		}
 		return fstore
 	}

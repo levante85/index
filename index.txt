@@ -1,0 +1,33 @@
+The skiplist based Index has the following format on disk, 32 uints for each
+node, that is one uint that rapresents the value pointer and 31 uint pointers
+like so:
+
+type Node struct{
+	uint value
+	Next [31]uint 
+}
+
+An allocator like data structure returns the actual node to from the uint which
+is also known as NodeID.
+On disk is represented as a compressed 48 bytes long record,composed by
+
+-2 bytes that indicates the state of the record, deleted or ok
+-8 bytes value non compressed to make so that comparisons are still possible
+-4 bytes crc32 to verify validity 
+-34 bytes Nex[31]uint compressed to save space 
+
+|--------------------------------------------------------------------|
+| status 2 bytes | value 8 bytes | next[31] 34 bytes | crc32 4 bytes |
+|--------------------------------------------------------------------|
+
+The index has also an header struct the contains statistics
+
+type Stats struct {
+	Magic [16]byte // savatar tsdb 
+	VersionMajor 	int8
+	VersionMinor 	int8
+	StatusOk     	uint16 
+	NumberOfEntries uint 
+	RecordSize   	uint 
+}
+
