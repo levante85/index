@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 	"unsafe"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSHeaderSize(t *testing.T) {
@@ -31,14 +33,8 @@ func TestSHeaderUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Log(ss.SpaceInUse)
-	if ss.SpaceInUse != 184 {
-		t.Fatal("Space in use should be 48 after updating the header")
-	}
-
-	if ss.NumberOfEntries != 0 {
-		t.Fatal("Number of entries should be 0 after updating the header")
-	}
+	assert.Equal(t, ss.SpaceInUse, HeaderSize, "space in use should be 184")
+	assert.Equal(t, ss.NumberOfEntries, 0, "numer should be 0")
 
 	os.Remove(store.name)
 }

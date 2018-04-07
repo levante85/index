@@ -15,7 +15,7 @@ const (
 	Minor       uint16 = 0
 	StatusOk    uint16 = 0
 	StatusDirty uint16 = 1
-	HeaderSize  int    = 48
+	HeaderSize  int    = 184
 )
 
 //SHeader  is the structure with the statistics from the Store
@@ -119,7 +119,7 @@ func (h *SHeaderManager) ReadHeader() error {
 	defer h.rBuff.Reset()
 
 	buff := make([]byte, 184)
-	if _, err := h.store.ReadAt(buff, 0); err != nil {
+	if _, err := h.store.ReadAt(buff, HeaderSize); err != nil {
 		return err
 	}
 
