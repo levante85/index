@@ -2,7 +2,7 @@ package store
 
 import (
 	"bytes"
-	"encoding/binary"
+	"encoding/gob"
 	"fmt"
 	"time"
 	"unsafe"
@@ -69,10 +69,12 @@ func (h *SHeader) lastUpdated() {
 
 //SHeaderManager ...
 type SHeaderManager struct {
-	header *SHeader
-	rBuff  *bytes.Buffer
-	wBuff  *bytes.Buffer
-	store  *FileBackend
+	header  *SHeader
+	rBuff   *bytes.Buffer
+	wBuff   *bytes.Buffer
+	encoder *gob.Encoder
+	decoder *gob.Decoder
+	store   *FileBackend
 }
 
 // NewHeaderManager instantian a new header manager the performs operations
@@ -90,16 +92,20 @@ func NewHeaderManager(s *FileBackend) *SHeaderManager {
 func (h *SHeaderManager) UpdateHeader() error {
 	defer h.wBuff.Reset()
 
-	err := binary.Write(h.wBuff, binary.LittleEndian, h.header)
+	if h.encoder == nil {
+		h.encoder = gob.NewEncoder(h.wBuff)
+	}
+
+	err := h.encoder.Encode(h.header)
 	if err != nil {
 		return err
 	}
 
-	if _, err := h.store.WriteAt(h.wBuff.Bytes(), HeaderSize); err != nil {
+	h.header.lastUpdated()
+	_, err = h.store.WriteAt(h.wBuff.Bytes(), 0)
+	if err != nil {
 		return err
 	}
-
-	h.header.lastUpdated()
 
 	return h.store.Sync(0, HeaderSize)
 }
@@ -108,13 +114,15 @@ func (h *SHeaderManager) UpdateHeader() error {
 func (h *SHeaderManager) ReadHeader() error {
 	defer h.rBuff.Reset()
 
-	buff := h.rBuff.Bytes()
+	buff := make([]byte, HeaderSize)
 	if _, err := h.store.ReadAt(buff, 0); err != nil {
 		return err
 	}
 
 	h.rBuff = bytes.NewBuffer(buff)
-	return binary.Read(h.rBuff, binary.LittleEndian, *h.header)
+	h.decoder = gob.NewDecoder(h.rBuff)
+
+	return h.decoder.Decode(h.header)
 }
 
 // Stats returns a newly version of stats meaning reads the header each time

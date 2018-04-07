@@ -16,6 +16,7 @@ func TestSHeaderSize(t *testing.T) {
 func TestSHeaderUpdate(t *testing.T) {
 	store := &FileBackend{
 		name:    "index.",
+		size:    FileSizeIdx,
 		maxSize: 16 * FileSizeIdx,
 	}
 
