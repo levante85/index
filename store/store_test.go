@@ -20,13 +20,13 @@ func TestFStoreOpenClose(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	assert.Equal(t, stat.Size(), int64(fstore.size), "Size should be equal")
 
 	test := []byte("this is a test")
 	fstore.WriteAt(test, 0)
 	fstore.Sync(0, 0)
 
-	t.Log(stat.Size())
 	assert.Equal(t, stat.Size(), int64(fstore.size), "Size should be equal")
 	assert.Nil(t, fstore.Close())
 	assert.Nil(t, os.Remove(fstore.name))

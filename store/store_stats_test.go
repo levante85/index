@@ -19,6 +19,7 @@ func TestSHeaderUpdate(t *testing.T) {
 		size:    FileSizeIdx,
 		maxSize: 16 * FileSizeIdx,
 	}
+	store.Open()
 
 	h := NewHeaderManager(store)
 	if err := h.UpdateHeader(); err != nil {
@@ -30,7 +31,8 @@ func TestSHeaderUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if ss.SpaceInUse != 48 {
+	t.Log(ss.SpaceInUse)
+	if ss.SpaceInUse != 184 {
 		t.Fatal("Space in use should be 48 after updating the header")
 	}
 

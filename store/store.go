@@ -139,7 +139,7 @@ func (s *FileBackend) Resize(size int) error {
 		size *= s.size
 
 		return s.file.Truncate(int64(size))
-	} else if s.currPos+size == s.size {
+	} else if s.currPos+size == s.size && s.currPos == 0 {
 		return s.file.Truncate(int64(size))
 	}
 

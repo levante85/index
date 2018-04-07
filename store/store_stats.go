@@ -25,7 +25,7 @@ type SHeader struct {
 	VersionMinor    uint16
 	StatusOk        uint16
 	NumberOfEntries uint
-	RecordSize      uint
+	RecordSize      int
 	LastUpdated     int64
 }
 
@@ -34,7 +34,7 @@ type SStats struct {
 	SpaceInUse      int
 	SpaceLeft       int
 	NumberOfEntries int
-	RecordSize      uint
+	RecordSize      int
 	LastUpdated     string
 }
 
@@ -43,7 +43,7 @@ func newHeader() *SHeader {
 		VersionMajor: Major,
 		VersionMinor: Minor,
 		StatusOk:     StatusOk,
-		RecordSize:   uint(unsafe.Sizeof(SRecord{})),
+		RecordSize:   int(unsafe.Sizeof(SRecord{})),
 		LastUpdated:  0,
 	}
 	copy(h.Magic[:], Magic)
@@ -51,16 +51,20 @@ func newHeader() *SHeader {
 	return h
 }
 
-func (h *SHeader) calculateUsageStats(fstore *FileBackend) *SStats {
-	dateLastUpdated := time.Unix(h.LastUpdated, 0)
-
-	return &SStats{
-		SpaceInUse:      fstore.currPos,
-		SpaceLeft:       fstore.maxSize - fstore.currPos,
-		NumberOfEntries: (fstore.currPos - int(unsafe.Sizeof(*h))/int(h.RecordSize)),
+func (h *SHeader) calculateUsageStats(s *FileBackend) *SStats {
+	sstas := &SStats{
+		SpaceInUse:      s.currPos,
+		SpaceLeft:       s.maxSize - s.currPos,
+		NumberOfEntries: 0,
 		RecordSize:      h.RecordSize,
-		LastUpdated:     fmt.Sprintf("%v", dateLastUpdated),
+		LastUpdated:     fmt.Sprintf("%v", time.Unix(h.LastUpdated, 0)),
 	}
+
+	if s.currPos > 0 && h.RecordSize > 0 {
+		sstas.NumberOfEntries = s.currPos - int(unsafe.Sizeof(*h))/h.RecordSize
+	}
+
+	return sstas
 }
 
 func (h *SHeader) lastUpdated() {
@@ -114,7 +118,7 @@ func (h *SHeaderManager) UpdateHeader() error {
 func (h *SHeaderManager) ReadHeader() error {
 	defer h.rBuff.Reset()
 
-	buff := make([]byte, HeaderSize)
+	buff := make([]byte, 184)
 	if _, err := h.store.ReadAt(buff, 0); err != nil {
 		return err
 	}
