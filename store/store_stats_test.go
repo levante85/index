@@ -1,6 +1,9 @@
 package store
 
 import (
+	"bytes"
+	"encoding/binary"
+	"encoding/gob"
 	"os"
 	"testing"
 	"unsafe"
@@ -37,4 +40,24 @@ func TestSHeaderUpdate(t *testing.T) {
 	assert.Equal(t, ss.NumberOfEntries, 0, "numer should be 0")
 
 	os.Remove(store.name)
+}
+
+func BenchmarkEncodingGob(b *testing.B) {
+	buff := &bytes.Buffer{}
+	h := SHeader{}
+	g := gob.NewEncoder(buff)
+	for i := 0; i < b.N; i++ {
+		g.Encode(h)
+	}
+}
+
+func BenchmarkEncodingBinary(b *testing.B) {
+	buff := &bytes.Buffer{}
+	h := SHeader{}
+	for i := 0; i < b.N; i++ {
+		err := binary.Write(buff, binary.LittleEndian, &h)
+		if err != nil {
+			b.Log(err)
+		}
+	}
 }
