@@ -74,7 +74,6 @@ func (g *Gzip) Decode(in []byte) ([]byte, error) {
 	}
 
 	if g.reader == nil {
-		var err error
 		g.reader, err = gzip.NewReader(g.bufR)
 		if err != nil {
 			return nil, err
@@ -90,11 +89,8 @@ func (g *Gzip) Decode(in []byte) ([]byte, error) {
 }
 
 // Close the Gzip Compressor and the underlying reader and writer
-func (g *Gzip) Close() (errR error, errW error) {
-	if g.reader != nil {
-		errR = g.reader.Close()
-	}
-
+func (g *Gzip) Close() (errW error) {
+	_ = g.reader.Close()
 	if g.writer != nil {
 		errW = g.writer.Close()
 	}
@@ -199,7 +195,7 @@ func NewSnappy() *Snappy {
 // Encode does what is says
 func (g *Snappy) Encode(in []byte) ([]byte, error) {
 	if g.writer == nil {
-		g.writer = snappy.NewWriter(g.bufW)
+		g.writer = snappy.NewBufferedWriter(g.bufW)
 	}
 
 	if g.bufW.Len() > 0 {
