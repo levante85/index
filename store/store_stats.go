@@ -118,8 +118,9 @@ func (h *SHeaderManager) UpdateHeader() error {
 func (h *SHeaderManager) ReadHeader() error {
 	defer h.rBuff.Reset()
 
-	buff := make([]byte, 184)
-	if _, err := h.store.ReadAt(buff, HeaderSize); err != nil {
+	buff := make([]byte, HeaderSize)
+	_, err := h.store.ReadAt(buff, 0)
+	if err != nil {
 		return err
 	}
 
