@@ -249,6 +249,40 @@ func (m *MappedBackend) ReadAt(b []byte, off int) (int, error) {
 	return n, nil
 }
 
+func (m *MappedBackend) madvise(off int, n int, advice int) error {
+	var (
+		_p    unsafe.Pointer
+		_zero uintptr
+		err   error
+	)
+
+	if len(m.mstore[off:off+n]) > 0 {
+		_p = unsafe.Pointer(&m.mstore[0])
+	} else {
+		_p = unsafe.Pointer(&_zero)
+	}
+	_, _, e := syscall.Syscall(
+		syscall.SYS_MADVISE,
+		uintptr(_p),
+		uintptr(len(m.mstore[off:off+n])),
+		uintptr(advice),
+	)
+
+	switch e {
+	case syscall.EAGAIN:
+		var EAGAIN error = syscall.EAGAIN
+		err = EAGAIN
+	case syscall.EINVAL:
+		var EINVAL error = syscall.EINVAL
+		err = EINVAL
+	case syscall.ENOENT:
+		var ENOENT error = syscall.ENONET
+		err = ENOENT
+	}
+
+	return err
+}
+
 // Sync syncs the underline mapped storage or a region of it if anything
 // other than zero is specified to it
 func (m *MappedBackend) Sync(off int, n int) error {
