@@ -15,8 +15,8 @@ func TestSHeaderSize(t *testing.T) {
 
 func TestSHeaderUpdate(t *testing.T) {
 	store := &FileBackend{
-		fname:            "index.",
-		fileStoreMaxsize: 16 * FileSizeIdx,
+		name:    "index.",
+		maxSize: 16 * FileSizeIdx,
 	}
 
 	h := NewHeaderManager(store)
@@ -37,5 +37,5 @@ func TestSHeaderUpdate(t *testing.T) {
 		t.Fatal("Number of entries should be 0 after updating the header")
 	}
 
-	os.Remove(store.fname)
+	os.Remove(store.name)
 }

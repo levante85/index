@@ -2,112 +2,72 @@ package store
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFStoreOpenClose(t *testing.T) {
-	fstore := &FileBackend{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
-	if err := fstore.Create(); err != nil {
-		t.Fatal(err)
+	fstore := &FileBackend{
+		name:    "index.",
+		size:    FileSizeDb,
+		maxSize: FileSizeDb * 16,
 	}
+	assert.Nil(t, fstore.Open())
 
-	stat, err := fstore.files[0].Stat()
+	stat, err := fstore.file.Stat()
 	if err != nil {
 		t.Fatal(err)
 	}
+	assert.Equal(t, stat.Size(), int64(fstore.size), "Size should be equal")
 
-	if size := stat.Size(); size != FileSizeDb {
-		t.Fatalf("Size shuold be %v and instead is %v\n", FileSizeDb, size)
-	}
+	test := []byte("this is a test")
+	fstore.WriteAt(test, 0)
+	fstore.Sync(0, 0)
 
-	name := fmt.Sprintf("%v0", fstore.fname)
-	_, err = os.Stat(name)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = fstore.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	os.Remove(name)
+	t.Log(stat.Size())
+	assert.Equal(t, stat.Size(), int64(fstore.size), "Size should be equal")
+	assert.Nil(t, fstore.Close())
+	assert.Nil(t, os.Remove(fstore.name))
 }
 
 func TestFStoreWrite(t *testing.T) {
-	fstore := &FileBackend{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
-	if err := fstore.Create(); err != nil {
-		t.Fatal(err)
+	fstore := &FileBackend{
+		name:    "index.",
+		size:    FileSizeDb,
+		maxSize: FileSizeDb * 16,
 	}
-
-	stat, err := fstore.files[0].Stat()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if size := stat.Size(); size != FileSizeDb {
-		t.Fatalf("Size shuold be %v and instead is %v\n", FileSizeDb, size)
-	}
-
-	name := fmt.Sprintf("%v0", fstore.fname)
-	_, err = os.Stat(name)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, fstore.Open())
 
 	data := []byte("this is a test")
 	n, err := fstore.WriteAt(data, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != len(data) {
-		t.Fatal("n and len(data) should be equal")
-	}
+
+	assert.Equal(t, n, len(data), "n and len(data) should be equal")
 
 	out := make([]byte, len(data))
 	n, err = fstore.ReadAt(out, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != len(data) {
-		t.Fatal("n and len(data) should be equal")
-	}
 
-	if bytes.Equal(data, out) {
-		t.Fatal("data should be equal")
-	}
+	assert.Equal(t, n, len(data), "n and len(data) should be equal")
+	assert.True(t, bytes.Equal(data, out), "n and len(data) should be equal")
 
-	err = fstore.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	os.Remove(name)
-
+	assert.Nil(t, fstore.Close())
+	assert.Nil(t, os.Remove(fstore.name))
 }
 
 func TestFStoreWriteMany(t *testing.T) {
-	fstore := &FileBackend{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
-	if err := fstore.Create(); err != nil {
-		t.Fatal(err)
+	fstore := &FileBackend{
+		name:    "index.",
+		size:    FileSizeDb,
+		maxSize: FileSizeDb * 16,
 	}
-
-	stat, err := fstore.files[0].Stat()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if size := stat.Size(); size != FileSizeDb {
-		t.Fatalf("Size shuold be %v and instead is %v\n", FileSizeDb, size)
-	}
-
-	name := fmt.Sprintf("%v0", fstore.fname)
-	_, err = os.Stat(name)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, fstore.Open())
 
 	data := []byte("this is a test")
 	for i, off := 0, len(data); i < 1024; i++ {
@@ -115,12 +75,12 @@ func TestFStoreWriteMany(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if n != len(data) {
-			t.Fatal("n and len(data) should be equal")
-		}
+		assert.Equal(t, n, len(data), "n and len(data) should be equal")
 
 		off += len(data)
 	}
+
+	fstore.Sync(0, 0)
 
 	for i, off := 0, len(data); i < 1024; i++ {
 		out := make([]byte, len(data))
@@ -128,34 +88,30 @@ func TestFStoreWriteMany(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if n != len(data) {
-			t.Fatal("n and len(data) should be equal")
-		}
 
-		if !bytes.Equal(data, out) {
-			t.Fatal("data should be equal")
-		}
+		assert.Equal(t, n, len(data), "n and len(data) should be equal")
+		assert.True(t, bytes.Equal(data, out), "n and len(data) should be equal")
+		//		t.Log(i, n, len(data))
+		//		t.Log(bytes.Equal(data, out))
+		//		t.Log(string(data), string(out))
+		//		t.Log("--------------------")
+
 		off += len(data)
 	}
 
-	if int(fstore.current) != 1024*len(data) {
-		t.Fatal("current offset is in wrong: ", fstore.current, 1024*len(data))
-	}
+	assert.Equal(t, fstore.currPos, 1024*len(data), "curreent offset size wrong")
 
-	err = fstore.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	os.Remove(name)
-
+	assert.Nil(t, fstore.Close())
+	assert.Nil(t, os.Remove(fstore.name))
 }
 
 func BenchmarkRead(b *testing.B) {
-	fstore := &FileBackend{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
-	if err := fstore.Create(); err != nil {
-		b.Fatal(err)
+	fstore := &FileBackend{
+		name:    "index.",
+		size:    FileSizeDb,
+		maxSize: FileSizeDb * 16,
 	}
+	assert.Nil(b, fstore.Open())
 
 	data := []byte("this is a test")
 	for i, off := 0, len(data); i < 1024; i++ {
@@ -163,9 +119,8 @@ func BenchmarkRead(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		if n != len(data) {
-			b.Fatal("n and len(data) should be equal")
-		}
+
+		assert.Equal(b, n, len(data), "n and len(data) should be equal")
 
 		off += len(data)
 	}
@@ -178,32 +133,21 @@ func BenchmarkRead(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			if n != len(data) {
-				b.Fatal("n and len(data) should be equal")
-			}
 
-			if !bytes.Equal(data, out) {
-				b.Fatal("data should be equal")
-			}
+			assert.Equal(b, n, len(data), "n and len(data) should be equal")
+			assert.True(b, bytes.Equal(data, out), "n and len(data) should be equal")
 			off += len(data)
 		}
 	}
 
-	err := fstore.Close()
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	name := fmt.Sprintf("%v0", fstore.fname)
-	os.Remove(name)
-
+	assert.Nil(b, fstore.Close())
+	assert.Nil(b, os.Remove(fstore.name))
 }
 
 func BenchmarkWrite(b *testing.B) {
-	fstore := &FileBackend{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
-	if err := fstore.Create(); err != nil {
-		b.Fatal(err)
-	}
+
+	fstore := &FileBackend{name: "index.", size: FileSizeDb, maxSize: FileSizeDb * 16}
+	assert.Nil(b, fstore.Open())
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -213,29 +157,20 @@ func BenchmarkWrite(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			if n != len(data) {
-				b.Fatal("n and len(data) should be equal")
-			}
+
+			assert.Equal(b, n, len(data), "n and len(data) should be equal")
 
 			off += len(data)
 		}
 	}
 
-	err := fstore.Close()
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	name := fmt.Sprintf("%v0", fstore.fname)
-	os.Remove(name)
-
+	assert.Nil(b, fstore.Close())
+	assert.Nil(b, os.Remove(fstore.name))
 }
 
 func BenchmarkReadLarge(b *testing.B) {
-	fstore := &FileBackend{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
-	if err := fstore.Create(); err != nil {
-		b.Fatal(err)
-	}
+	fstore := &FileBackend{name: "index.", size: FileSizeDb, maxSize: FileSizeDb * 16}
+	assert.Nil(b, fstore.Open())
 
 	data := []byte("this is a test")
 	for i, off := 0, len(data); i < 100000; i++ {
@@ -243,9 +178,8 @@ func BenchmarkReadLarge(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		if n != len(data) {
-			b.Fatal("n and len(data) should be equal")
-		}
+
+		assert.Equal(b, n, len(data), "n and len(data) should be equal")
 
 		off += len(data)
 	}
@@ -258,30 +192,21 @@ func BenchmarkReadLarge(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			if n != len(data) {
-				b.Fatal("n and len(data) should be equal")
-			}
 
-			if !bytes.Equal(data, out) {
-				b.Fatal("data should be equal")
-			}
+			assert.Equal(b, n, len(data), "n and len(data) should be equal")
+			assert.True(b, bytes.Equal(data, out), "n and len(data) should be equal")
+
 			off += len(data)
 		}
 	}
 
-	err := fstore.Close()
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	name := fmt.Sprintf("%v0", fstore.fname)
-	os.Remove(name)
-
+	assert.Nil(b, fstore.Close())
+	assert.Nil(b, os.Remove(fstore.name))
 }
 
 func BenchmarkWriteLarge(b *testing.B) {
-	fstore := &FileBackend{fname: "index.", fileStoreMaxsize: FileSizeDb * 16}
-	if err := fstore.Create(); err != nil {
+	fstore := &FileBackend{name: "index.", size: FileSizeDb, maxSize: FileSizeDb * 16}
+	if err := fstore.Open(); err != nil {
 		b.Fatal(err)
 	}
 
@@ -293,126 +218,80 @@ func BenchmarkWriteLarge(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			if n != len(data) {
-				b.Fatal("n and len(data) should be equal")
-			}
+
+			assert.Equal(b, n, len(data), "n and len(data) should be equal")
 
 			off += len(data)
 		}
 	}
 
-	err := fstore.Close()
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	name := fmt.Sprintf("%v0", fstore.fname)
-	os.Remove(name)
-
+	assert.Nil(b, fstore.Close())
+	assert.Nil(b, os.Remove(fstore.name))
 }
 
 func TestMStoreOpenClose(t *testing.T) {
-	store := &FileBackend{
-		fname:            "index.",
-		fileStoreMaxsize: FileSizeDb * 16,
-	}
+
+	store := &FileBackend{name: "index.", size: FileSizeDb, maxSize: FileSizeDb * 16}
 
 	fstore := &MappedBackend{
 		fstore: store,
-		mstore: make([][]byte, 0),
+		mstore: make([]byte, 0),
 	}
 
-	if err := fstore.Create(); err != nil {
-		t.Fatal(err)
-	}
-
-	stat, err := fstore.fstore.files[0].Stat()
+	assert.Nil(t, fstore.Open())
+	stat, err := fstore.fstore.file.Stat()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if size := stat.Size(); size != FileSizeDb {
-		t.Fatalf("Size shuold be %v and instead is %v\n", FileSizeDb, size)
-	}
+	assert.Equal(t, stat.Size(), int64(fstore.fstore.size), "Size should be equal")
 
-	name := fmt.Sprintf("%v0", fstore.fstore.fname)
-	_, err = os.Stat(name)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = fstore.Close()
-	if err != nil {
-		t.Fatal("Close: ", err)
-	}
-
-	os.Remove(name)
+	assert.Nil(t, fstore.Close())
+	assert.Nil(t, os.Remove(fstore.fstore.name))
 }
 
 func TestMStoreWrite(t *testing.T) {
-	store := &FileBackend{
-		fname:            "index.",
-		fileStoreMaxsize: FileSizeDb * 16,
-	}
+
+	store := &FileBackend{name: "index.", size: FileSizeDb, maxSize: FileSizeDb * 16}
 
 	fstore := &MappedBackend{
 		fstore: store,
-		mstore: make([][]byte, 0),
+		mstore: make([]byte, 0),
 	}
 
-	if err := fstore.Create(); err != nil {
-		t.Fatal(err)
-	}
-
-	name := fmt.Sprintf("%v0", fstore.fstore.fname)
+	assert.Nil(t, fstore.Open())
 
 	data := []byte("this is a test")
 	n, err := fstore.WriteAt(data, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != len(data) {
-		t.Fatal("n and len(data) should be equal")
-	}
+
+	assert.Equal(t, n, len(data), "n and len(data) should be equal")
 
 	out := make([]byte, len(data))
 	n, err = fstore.ReadAt(out, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != len(data) {
-		t.Fatal("n and len(data) should be equal")
-	}
 
-	if !bytes.Equal(data, out) {
-		t.Fatal("data should be equal: ", string(data), string(out))
-	}
+	assert.Equal(t, n, len(data), "n and len(data) should be equal")
+	assert.True(t, bytes.Equal(data, out), "n and len(data) should be equal")
 
-	err = fstore.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	os.Remove(name)
-
+	assert.Nil(t, fstore.Close())
+	assert.Nil(t, os.Remove(fstore.fstore.name))
 }
 
 func TestMStoreWriteMany(t *testing.T) {
-	store := &FileBackend{
-		fname:            "index.",
-		fileStoreMaxsize: FileSizeDb * 16,
-	}
+
+	store := &FileBackend{name: "index.", size: FileSizeDb, maxSize: FileSizeDb * 16}
 
 	fstore := &MappedBackend{
 		fstore: store,
-		mstore: make([][]byte, 0),
+		mstore: make([]byte, 0),
 	}
 
-	if err := fstore.Create(); err != nil {
-		t.Fatal(err)
-	}
-
-	name := fmt.Sprintf("%v0", fstore.fstore.fname)
+	assert.Nil(t, fstore.Open())
 
 	data := []byte("this is a test")
 	for i, off := 0, 0; i < 1024; i++ {
@@ -420,9 +299,8 @@ func TestMStoreWriteMany(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if n != len(data) {
-			t.Fatal("n and len(data) should be equal")
-		}
+
+		assert.Equal(t, n, len(data), "n and len(data) should be equal")
 
 		off += len(data)
 	}
@@ -437,43 +315,29 @@ func TestMStoreWriteMany(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if n != len(data) {
-			t.Fatal("n and len(data) should be equal")
-		}
 
-		if !bytes.Equal(data, out) {
-			t.Fatal("data should be equal at inter: ", i, string(data), string(out))
-		}
+		assert.Equal(t, n, len(data), "n and len(data) should be equal")
+		assert.True(t, bytes.Equal(data, out), "n and len(data) should be equal")
 
 		off += len(data)
 	}
 
-	if int(fstore.fstore.current) != 1024*len(data) {
-		t.Fatal("current offset is in wrong: ", fstore.fstore.current, 1024*len(data))
-	}
+	assert.Equal(t, fstore.fstore.currPos, 1024*len(data), "current off is wrong")
 
-	err := fstore.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	os.Remove(name)
-
+	assert.Nil(t, fstore.Close())
+	assert.Nil(t, os.Remove(fstore.fstore.name))
 }
 
 func BenchmarkMStoreRead(b *testing.B) {
-	store := &FileBackend{
-		fname:            "index.",
-		fileStoreMaxsize: FileSizeDb * 16,
-	}
+
+	store := &FileBackend{name: "index.", size: FileSizeDb, maxSize: FileSizeDb * 16}
 
 	fstore := &MappedBackend{
 		fstore: store,
-		mstore: make([][]byte, 0),
+		mstore: make([]byte, 0),
 	}
-	if err := fstore.Create(); err != nil {
-		b.Fatal(err)
-	}
+
+	assert.Nil(b, fstore.Open())
 
 	data := []byte("this is a test")
 	for i, off := 0, 0; i < 1024; i++ {
@@ -481,9 +345,8 @@ func BenchmarkMStoreRead(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		if n != len(data) {
-			b.Fatal("n and len(data) should be equal")
-		}
+
+		assert.Equal(b, n, len(data), "n and len(data) should be equal")
 
 		off += len(data)
 	}
@@ -496,81 +359,56 @@ func BenchmarkMStoreRead(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			if n != len(data) {
-				b.Fatal("n and len(data) should be equal")
-			}
 
-			if !bytes.Equal(data, out) {
-				b.Fatal("data should be equal")
-			}
+			assert.Equal(b, n, len(data), "n and len(data) should be equal")
+			assert.True(b, bytes.Equal(data, out), "n and len(data) should be equal")
+
 			off += len(data)
 		}
 	}
 
-	err := fstore.Close()
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	name := fmt.Sprintf("%v0", fstore.fstore.fname)
-	os.Remove(name)
+	assert.Nil(b, fstore.Close())
+	assert.Nil(b, os.Remove(fstore.fstore.name))
 
 }
 
 func BenchmarkMStoreWrite(b *testing.B) {
-	store := &FileBackend{
-		fname:            "index.",
-		fileStoreMaxsize: FileSizeDb * 16,
-	}
+
+	store := &FileBackend{name: "index.", size: FileSizeDb, maxSize: FileSizeDb * 16}
 
 	fstore := &MappedBackend{
 		fstore: store,
-		mstore: make([][]byte, 0),
-	}
-	if err := fstore.Create(); err != nil {
-		b.Fatal(err)
+		mstore: make([]byte, 0),
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		data := []byte("this is a test")
-		for i, off := 0, 0; i < 1024; i++ {
-			n, err := fstore.WriteAt(data, off)
-			if err != nil {
-				b.Fatal(err)
-			}
-			if n != len(data) {
-				b.Fatal("n and len(data) should be equal")
-			}
+	assert.Nil(b, fstore.Open())
 
-			off += len(data)
+	data := []byte("this is a test")
+	for i, off := 0, 0; i < 1024; i++ {
+		n, err := fstore.WriteAt(data, off)
+		if err != nil {
+			b.Fatal(err)
 		}
-	}
 
-	err := fstore.Close()
-	if err != nil {
-		b.Fatal(err)
-	}
+		assert.Equal(b, n, len(data), "n and len(data) should be equal")
 
-	name := fmt.Sprintf("%v0", fstore.fstore.fname)
-	os.Remove(name)
+		off += len(data)
+	}
+	assert.Nil(b, fstore.Close())
+	assert.Nil(b, os.Remove(fstore.fstore.name))
 
 }
 
 func BenchmarkMStoreReadLarge(b *testing.B) {
-	store := &FileBackend{
-		fname:            "index.",
-		fileStoreMaxsize: FileSizeDb * 16,
-	}
+
+	store := &FileBackend{name: "index.", size: FileSizeDb, maxSize: FileSizeDb * 16}
 
 	fstore := &MappedBackend{
 		fstore: store,
-		mstore: make([][]byte, 0),
+		mstore: make([]byte, 0),
 	}
 
-	if err := fstore.Create(); err != nil {
-		b.Fatal(err)
-	}
+	assert.Nil(b, fstore.Open())
 
 	data := []byte("this is a test")
 	for i, off := 0, 0; i < 100000; i++ {
@@ -578,9 +416,8 @@ func BenchmarkMStoreReadLarge(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		if n != len(data) {
-			b.Fatal("n and len(data) should be equal")
-		}
+
+		assert.Equal(b, n, len(data), "n and len(data) should be equal")
 
 		off += len(data)
 	}
@@ -593,63 +430,42 @@ func BenchmarkMStoreReadLarge(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			if n != len(data) {
-				b.Fatal("n and len(data) should be equal")
-			}
 
-			if !bytes.Equal(data, out) {
-				b.Fatal("data should be equal")
-			}
+			assert.Equal(b, n, len(data), "n and len(data) should be equal")
+			assert.True(b, bytes.Equal(data, out), "n and len(data) should be equal")
+
 			off += len(data)
 		}
 	}
 
-	err := fstore.Close()
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	name := fmt.Sprintf("%v0", fstore.fstore.fname)
-	os.Remove(name)
+	assert.Nil(b, fstore.Close())
+	assert.Nil(b, os.Remove(fstore.fstore.name))
 
 }
 
 func BenchmarkMStoreWriteLarge(b *testing.B) {
-	store := &FileBackend{
-		fname:            "index.",
-		fileStoreMaxsize: FileSizeDb * 16,
-	}
+
+	store := &FileBackend{name: "index.", size: FileSizeDb, maxSize: FileSizeDb * 16}
 
 	fstore := &MappedBackend{
 		fstore: store,
-		mstore: make([][]byte, 0),
-	}
-	if err := fstore.Create(); err != nil {
-		b.Fatal(err)
+		mstore: make([]byte, 0),
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		data := []byte("this is a test")
-		for i, off := 0, len(data); i < 100000; i++ {
-			n, err := fstore.WriteAt(data, off)
-			if err != nil {
-				b.Fatal(err)
-			}
-			if n != len(data) {
-				b.Fatal("n and len(data) should be equal")
-			}
+	assert.Nil(b, fstore.Open())
 
-			off += len(data)
+	data := []byte("this is a test")
+	for i, off := 0, 0; i < 100000; i++ {
+		n, err := fstore.WriteAt(data, off)
+		if err != nil {
+			b.Fatal(err)
 		}
+
+		assert.Equal(b, n, len(data), "n and len(data) should be equal")
+
+		off += len(data)
 	}
 
-	err := fstore.Close()
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	name := fmt.Sprintf("%v0", fstore.fstore.fname)
-	os.Remove(name)
-
+	assert.Nil(b, fstore.Close())
+	assert.Nil(b, os.Remove(fstore.fstore.name))
 }

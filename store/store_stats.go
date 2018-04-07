@@ -55,9 +55,9 @@ func (h *SHeader) calculateUsageStats(fstore *FileBackend) *SStats {
 	dateLastUpdated := time.Unix(h.LastUpdated, 0)
 
 	return &SStats{
-		SpaceInUse:      fstore.current,
-		SpaceLeft:       fstore.fileStoreMaxsize - fstore.current,
-		NumberOfEntries: (fstore.current - int(unsafe.Sizeof(*h))/int(h.RecordSize)),
+		SpaceInUse:      fstore.currPos,
+		SpaceLeft:       fstore.maxSize - fstore.currPos,
+		NumberOfEntries: (fstore.currPos - int(unsafe.Sizeof(*h))/int(h.RecordSize)),
 		RecordSize:      h.RecordSize,
 		LastUpdated:     fmt.Sprintf("%v", dateLastUpdated),
 	}
