@@ -1,2 +1,9 @@
-FIX the header update
+done:
+ - FIX the header update 
+
+not done:
+ - Complete transaction implementation 
+ - Reimplement resize for the memory mapped store 
+ - Check why writes using the builtin copy are so fast
+
 

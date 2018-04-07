@@ -40,9 +40,11 @@ const (
 
 // Store errors types
 var (
-	ErrZeroSlice = fmt.Errorf("Byte slice size must be more than 0")
-	ErrNoData    = fmt.Errorf("Offset must be within valid data region")
-	ErrSizeLimit = fmt.Errorf("Store max size limit of 1 tera reached")
+	ErrZeroSlice     = fmt.Errorf("Byte slice size must be more than 0")
+	ErrReadTooShort  = fmt.Errorf("Could not copy the requested bytes")
+	ErrWriteTooShort = fmt.Errorf("Could not write the requested bytes")
+	ErrNoData        = fmt.Errorf("Offset must be within valid data region")
+	ErrSizeLimit     = fmt.Errorf("Store max size limit of 1 tera reached")
 )
 
 // Conf is a configuration struct to be given when a new store is
@@ -189,7 +191,7 @@ func (m *MappedBackend) Open() (err error) {
 	m.mstore, err = syscall.Mmap(
 		int(m.fstore.file.Fd()),
 		0,
-		int(FileSizeDb),
+		m.fstore.size,
 		syscall.PROT_WRITE|syscall.PROT_READ,
 		syscall.MAP_SHARED,
 	)
@@ -216,11 +218,16 @@ func (m *MappedBackend) WriteAt(b []byte, off int) (int, error) {
 		m.fstore.currPos += len(b)
 	}
 
-	for i, j := off, 0; i < off+len(b) && j < len(b); i, j = i+1, j+1 {
-		m.mstore[i] = b[j]
+	n := copy(m.mstore[off:], b)
+	if len(b) != n {
+		return n, ErrWriteTooShort
 	}
 
-	return len(b), nil
+	//for i, j := off, 0; i < off+len(b) && j < len(b); i, j = i+1, j+1 {
+	//		m.mstore[i] = b[j]
+	//}
+
+	return n, nil
 }
 
 //ReadAt write at said location
@@ -234,12 +241,12 @@ func (m *MappedBackend) ReadAt(b []byte, off int) (int, error) {
 		return -1, ErrNoData
 	}
 
-	for i, j := off, 0; i < off+len(b) && j < len(b); i, j = i+1, j+1 {
-		b[j] = m.mstore[i]
-
+	n := copy(b, m.mstore[off:])
+	if len(b) != n {
+		return n, ErrReadTooShort
 	}
 
-	return len(b), nil
+	return n, nil
 }
 
 // Sync syncs the underline mapped storage or a region of it if anything
