@@ -3,6 +3,7 @@ done:
 
 not done:
  - Complete transaction implementation 
+ - Add a transaction manager to handle the rollback logic etc
  - Reimplement resize for the memory mapped store 
  - Check why writes using the builtin copy are so fast // unrealistic 
 

@@ -9,7 +9,8 @@ A transaction unlike other database isn't structured like a log to be replayed
 in case of failure, a store transaction is structured more like a mutex it 
 protect a critical section which in this case is a modification to the store, 
 for reading no transaction is needed because it doesn't alter the database 
-state.
+state, effectively working as reader writer mutex, multiple reader can read at 
+the same time and only an single writer can write at the same time.
 The store transaction on disk is two time stamps ( Unix format ), and two crc64
 verification bytes, can be seen like so:
 
