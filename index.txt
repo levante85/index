@@ -11,10 +11,10 @@ An allocator like data structure returns the actual node to from the uint which
 is also known as NodeID.
 On disk is represented as a compressed 48 bytes long record,composed by
 
--2 bytes that indicates the state of the record, deleted or ok
--8 bytes value non compressed to make so that comparisons are still possible
--4 bytes crc32 to verify validity 
--34 bytes Nex[31]uint compressed to save space 
+- 2 bytes that indicates the state of the record, deleted or ok
+- 8 bytes value non compressed to make so that comparisons are still possible
+- 4 bytes crc32 to verify validity 
+- 34 bytes Nex[31]uint compressed to save space 
 
 |--------------------------------------------------------------------|
 | status 2 bytes | value 8 bytes | next[31] 34 bytes | crc32 4 bytes |
@@ -31,3 +31,17 @@ type Stats struct {
 	RecordSize   	uint 
 }
 
+The header is seriazed on all the new updates, NodeIDs are given sequentially 
+from 1 to max index size, offsets are calculated NodeID X RecordSize.
+The head is always kept in memory, has soon as the index is opened the sentinel
+node is fetched from the index file.
+
+
+// change neccessary since the secondary key and primary as well index contain
+// the key/offset in the node, the key being the value with want to index and 
+// the offset being the unit that indexes the main storage file.
+
+The primary key should be invisible to the user and should always be the
+timestamp, then "tags" should be indexed as well in a secondary index, or use
+multiple keys in a single node like all the values being indexed, which is a 
+better solution in terms of simplicity of implementation.
