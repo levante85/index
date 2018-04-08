@@ -9,6 +9,8 @@ import (
 	"github.com/levante85/index/store"
 )
 
+const stampSize = 16
+
 // Tx is the transaction structure
 type Tx struct {
 	name     string
@@ -50,15 +52,21 @@ func (t *Tx) write(tstamp int64, off int) (err error) {
 	switch off {
 	case 0:
 		start = off
-		stop = 8
+		stop = stampSize
 	default:
 		start = off
-		stop = off + 8
+		stop = off + stampSize
 	}
 
 	defer t.store.Sync(start, stop)
 
 	err = binary.Write(t.buffer, binary.LittleEndian, tstamp)
+	if err != nil {
+		return err
+	}
+
+	csum := t.checker.Checksum(t.buffer.Bytes())
+	err = binary.Write(t.buffer, binary.LittleEndian, csum)
 	if err != nil {
 		return err
 	}
@@ -104,7 +112,7 @@ func (t *Tx) Stop() error {
 	defer t.store.Close()
 
 	stamp := time.Now().Unix()
-	err := t.write(stamp, 8)
+	err := t.write(stamp, stampSize)
 	if err != nil {
 		return err
 	}

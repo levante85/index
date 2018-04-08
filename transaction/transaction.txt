@@ -1,0 +1,66 @@
+A store transaction it works like so:
+
+ 1 tx.Start()
+ 2 write    
+ 3 sync
+ 4 tx.Stop()
+
+A transaction unlike other database isn't structured like a log to be replayed 
+in case of failure, a store transaction is structured more like a mutex it 
+protect a critical section which in this case is a modification to the store, 
+for reading no transaction is needed because it doesn't alter the database 
+state.
+The store transaction on disk is two time stamps ( Unix format ), and two crc64
+verification bytes, can be seen like so:
+
+|--------------------------------------------------|
+|  8 bytes crc64 checksum | 8 bytes Unix time stamp| <- this is written when start is called
+|--------------------------------------------------|
+|  8 bytes crc64 checksum | 8 bytes Unix time stamp| <- this is written when stop is called
+|--------------------------------------------------|
+
+The name of the transaction file is a Unix time stamp, when Start() is called, 
+a new transaction file is created, computed the checksum of the transaction 
+start time and written and synced to disk.
+
+Case 1:
+ - If power loss or anything else nothing has been written yet, the file can be
+   in one of the following states:
+   + not created
+   + partially written ( time stamp missing, checksum half written etc )
+   + not synced ( therefore data lost after write )
+
+   The dirty bit in the store has been set before the call to transaction start,
+   on reboot, the db header is read and if the bit is set to true, a rollback 
+   process is start, the lastUpdated value is read from the header and a corresponding
+   transaction file with the same is looked for, the following are the cases:
+   + file not found, changed the dirty bit to true ( meaning nothing has been written
+     to the db because power loss happened right after the dirty bit was set ).
+     nothing to do because no change happened, dirty bit set to false.
+   + file is wrong size, that is less than 16 bytes ( meaning power loss or other
+     event happened during the Start() call and before the write was synced to disk )
+     nothing to do because no change happened, transaction file deleted dirty bit
+     set back to false.
+   + file is proper size == 16 bytes, every record in the db with time stamp bigger
+     then the time stamp read is marked as deleted ( thumb stoned ), dirty flag
+     set to false and transaction file deleted.
+
+Case 2:
+  - If power loss or anything else happened during the call to Stop(), the 
+    transaction file can be in one of the following states:
+    + partially written ( time stamp missing, checksum half written etc )
+
+    After a reboot the dirty bit is found to be set to true and a transaction 
+    with the name corresponding to the lastUpdated is looked for, the transaction 
+    is open and read and there are the following cases:
+    + file is wrong size anything bigger than 16 bytes but smaller than 32 bytes
+      everything on the store from the start time stamp is deleted or better said
+      marked as deleted, transaction file deleted and dirty flag set to true.
+    + file is good size == 32 bytes but dirty flag is set to true, lastUpdated 
+      time is checked to be equal to the second entry in the store if so, all 
+      good dirty flag set to false and transaction file deleted, other wise all 
+      the entries in the range are thumb stoned.
+    + file is good size == 32 bytes dirty flag set to false, therefore the
+      transaction file is deleted ( this is expected behavior )
+
+
