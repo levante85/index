@@ -7,4 +7,6 @@ not done:
  - Reimplement resize for the memory mapped store 
  - Check why writes using the builtin copy are so fast // unrealistic 
 
-
+thinking:
+ - Use multiple mappings for the same store ie, 68Gb diveded by 16Kb page are
+   roughly equal to ~4000000 pages ...
